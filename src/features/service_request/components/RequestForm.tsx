@@ -1,0 +1,251 @@
+import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner";
+import {
+  REQUEST_URGENCIES,
+  serviceRequestSchema,
+  type Jurisdiction,
+  type ServiceRequestFormInput,
+  type ServiceRequestValues,
+} from "@/features/service_request/schema";
+import { fetchJurisdictions, submitServiceRequest } from "@/features/service_request/services/service_request.service";
+
+import { ImageUploader } from "./ImageUploader";
+import { StepIndicator } from "./StepIndicator";
+import { SuccessCard } from "./SuccessCard";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ArrowLeftIcon, ArrowRightIcon, Loader2 } from "lucide-react";
+
+const STEP1_FIELDS: (keyof ServiceRequestFormInput)[] = ["issue", "description", "urgency"];
+
+export function RequestForm() {
+  const [step, setStep] = useState<1 | 2>(1);
+  const [files, setFiles] = useState<File[]>([]);
+  const [jurisdictions, setJurisdictions] = useState<Jurisdiction[]>([]);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitted, setSubmitted] = useState<string | null>(null);
+
+  // Load the areas for the picker from the `jurisdictions` table.
+  useEffect(() => {
+    fetchJurisdictions()
+      .then(setJurisdictions)
+      .catch(() => toast.error("Could not load areas. Please refresh the page."));
+  }, []);
+
+  const {
+    register,
+    handleSubmit,
+    trigger,
+    setValue,
+    watch,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<ServiceRequestFormInput, unknown, ServiceRequestValues>({
+    resolver: zodResolver(serviceRequestSchema),
+    defaultValues: { urgency: "normal" },
+  });
+
+  async function goNext() {
+    const valid = await trigger(STEP1_FIELDS);
+    if (valid) {
+      setStep(2);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }
+
+  function goBack() {
+    setStep(1);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  const onSubmit = async (data: ServiceRequestValues) => {
+    setSubmitError(null);
+    try {
+      setSubmitted(await submitServiceRequest(data, files));
+    } catch (err) {
+      console.error(err);
+      setSubmitError((err as Error).message || "Failed to submit request. Try again.");
+    }
+  };
+
+  function handleReset() {
+    reset({ urgency: "normal" });
+    setFiles([]);
+    setSubmitError(null);
+    setSubmitted(null);
+    setStep(1);
+  }
+
+  if (submitted) return <SuccessCard requestNumber={submitted} onReset={handleReset} />;
+
+  return (
+    <div>
+      <StepIndicator step={step} />
+
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" noValidate>
+        {/* STEP 1 */}
+        <div className={step === 1 ? "space-y-6" : "hidden"}>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="issue">Issue</Label>
+            <Input id="issue" placeholder="Faulty A/C" {...register("issue")} aria-invalid={!!errors.issue} />
+            {errors.issue && <p className="text-xs text-destructive">{errors.issue.message}</p>}
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="description" className="flex flex-wrap gap-x-1">
+              Description{" "}
+              <span className="font-light text-muted-foreground">— please provide as much detail as possible</span>
+            </Label>
+            <Textarea
+              id="description"
+              placeholder="Describe the issue"
+              className="min-h-28"
+              {...register("description")}
+              aria-invalid={!!errors.description}
+            />
+            {errors.description && <p className="text-xs text-destructive">{errors.description.message}</p>}
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="urgency">How urgent is it?</Label>
+            <Select
+              onValueChange={(val) =>
+                setValue("urgency", val as ServiceRequestValues["urgency"], { shouldValidate: true })
+              }
+              value={watch("urgency") ?? "normal"}
+            >
+              <SelectTrigger id="urgency" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {REQUEST_URGENCIES.map((u) => (
+                  <SelectItem key={u.dbValue} value={u.dbValue}>
+                    {u.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {watch("urgency") === "emergency" && (
+              <p className="text-xs text-destructive">
+                If anyone is in danger, move to safety and call KNUST Security or 191 now. Do not wait for this form.
+              </p>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label>
+              Images <span className="font-light text-muted-foreground">(optional)</span>
+            </Label>
+            <ImageUploader files={files} onChange={setFiles} />
+          </div>
+
+          <div className="flex justify-end">
+            <Button type="button" size="lg" onClick={goNext} className="flex items-center gap-2">
+              Next
+              <ArrowRightIcon size={16} />
+            </Button>
+          </div>
+        </div>
+
+        {/* STEP 2 */}
+        <div className={step === 2 ? "space-y-6" : "hidden"}>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="jurisdiction">Area / Jurisdiction</Label>
+            <Select
+              onValueChange={(val) => setValue("jurisdiction_id", Number(val), { shouldValidate: true })}
+              value={watch("jurisdiction_id") ? String(watch("jurisdiction_id")) : undefined}
+            >
+              <SelectTrigger id="jurisdiction" aria-invalid={!!errors.jurisdiction_id}>
+                <SelectValue placeholder="Select an area..." />
+              </SelectTrigger>
+              <SelectContent>
+                {jurisdictions.map((j) => (
+                  <SelectItem key={j.id} value={String(j.id)}>
+                    {j.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {errors.jurisdiction_id && <p className="text-xs text-destructive">{errors.jurisdiction_id.message}</p>}
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="location">Location</Label>
+            <Input
+              id="location"
+              placeholder="eg. Petroleum Building, FF 8"
+              {...register("location")}
+              aria-invalid={!!errors.location}
+            />
+            {errors.location && <p className="text-xs text-destructive">{errors.location.message}</p>}
+          </div>
+
+          <div className="flex gap-2 not-md:flex-col">
+            <div className="flex flex-col gap-1.5 w-full">
+              <Label htmlFor="reporter">Your Name</Label>
+              <Input id="reporter" placeholder="John Doe" {...register("reporter")} aria-invalid={!!errors.reporter} />
+              {errors.reporter && <p className="text-xs text-destructive">{errors.reporter.message}</p>}
+            </div>
+
+            <div className="flex flex-col gap-1.5 w-full">
+              <Label htmlFor="reporter_contact">Contact</Label>
+              {/* Fixed +233 prefix; the field takes the 9 digits after it. */}
+              <div
+                className={`flex h-10 w-full items-center rounded-lg border bg-input/10 transition-colors focus-within:border-ring focus-within:ring-1 focus-within:ring-ring/50 ${
+                  errors.reporter_contact ? "border-destructive ring-1 ring-destructive/20" : "border-input"
+                }`}
+              >
+                <span className="select-none border-r border-input px-2.5 text-sm text-muted-foreground">+233</span>
+                <input
+                  id="reporter_contact"
+                  type="tel"
+                  inputMode="numeric"
+                  placeholder="241234567"
+                  className="h-full w-full min-w-0 bg-transparent px-2.5 text-sm outline-none placeholder:text-muted-foreground"
+                  {...register("reporter_contact", {
+                    // Digits only while typing, 9 max.
+                    onChange: (e) => {
+                      e.target.value = e.target.value.replace(/\D/g, "").slice(0, 9);
+                    },
+                  })}
+                  aria-invalid={!!errors.reporter_contact}
+                />
+              </div>
+              {errors.reporter_contact && <p className="text-xs text-destructive">{errors.reporter_contact.message}</p>}
+            </div>
+          </div>
+
+          <p
+            role="alert"
+            className={`text-sm text-destructive text-center transition-all duration-300 ${submitError ? "opacity-100" : "opacity-0"}`}
+          >
+            {submitError ?? "\u00a0"}
+          </p>
+
+          <div className="flex gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={goBack}
+              disabled={isSubmitting}
+              size="lg"
+              className="flex items-center gap-2"
+            >
+              <ArrowLeftIcon size={16} />
+              Back
+            </Button>
+
+            <Button type="submit" disabled={isSubmitting} size="lg" className="flex-1">
+              {isSubmitting ? <Loader2 className="animate-spin" /> : "Submit Request"}
+            </Button>
+          </div>
+        </div>
+      </form>
+    </div>
+  );
+}

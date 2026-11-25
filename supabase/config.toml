@@ -1,0 +1,61 @@
+# Supabase CLI configuration for local development (`supabase start`).
+# Production settings live in the Supabase dashboard; keep them in step with
+# this file (see docs/RUNBOOK.md).
+
+project_id = "kced"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public"]
+extra_search_path = ["public", "extensions"]
+# Matches PostgREST's default; the web app pages through larger tables.
+max_rows = 1000
+
+[db]
+port = 54322
+major_version = 15
+
+[db.seed]
+enabled = true
+sql_paths = ["./seed.sql"]
+
+[studio]
+enabled = true
+port = 54323
+
+[local_smtp]
+# Local email catcher: invite and OTP emails appear at http://localhost:54324
+enabled = true
+port = 54324
+
+[storage]
+enabled = true
+file_size_limit = "10MiB"
+
+[auth]
+enabled = true
+site_url = "http://localhost:5173"
+additional_redirect_urls = ["http://localhost:5173/account-setup", "http://localhost:5173/forgot-password"]
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+# Staff accounts are invite-only: nobody can sign themselves up.
+enable_signup = false
+minimum_password_length = 8
+
+[auth.email]
+double_confirm_changes = false   # one code to the new address (matches the app's email-change flow)
+enable_confirmations = false
+otp_length = 6
+otp_expiry = 3600
+
+[edge_runtime]
+enabled = true
+policy = "per_worker"
+
+[functions.invite-user]
+verify_jwt = true
+
+[functions.track-request]
+# Public endpoint used by the tracking page (called with the anon key).
+verify_jwt = false

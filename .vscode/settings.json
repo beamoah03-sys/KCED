@@ -1,0 +1,29 @@
+{
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.preferences.importModuleSpecifier": "non-relative",
+  "files.associations": {
+    "*.css": "tailwindcss"
+  },
+  "files.readonlyInclude": {
+    "src/routeTree.gen.ts": true
+  },
+  "files.exclude": {
+    "**/.tanstack": true
+  },
+  "search.exclude": {
+    "src/routeTree.gen.ts": true,
+    "package-lock.json": true,
+    "dist": true
+  },
+  "deno.enablePaths": ["supabase/functions"],
+  "deno.lint": true,
+  "[sql]": {
+    "editor.defaultFormatter": null
+  },
+  "tailwindCSS.experimental.classRegex": [["cn\\(([^)]*)\\)", "[\"'`]([^\"'`]*).*?[\"'`]"]]
+}

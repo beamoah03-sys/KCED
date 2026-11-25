@@ -1,0 +1,23 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "dev server",
+      "type": "npm",
+      "script": "dev",
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "vite",
+        "pattern": { "regexp": "^$" },
+        "background": {
+          "activatesOnStart": true,
+          "beginsPattern": "VITE",
+          "endsPattern": "Local:"
+        }
+      }
+    },
+    { "label": "check everything", "type": "npm", "script": "check", "group": "test", "problemMatcher": ["$tsc"] },
+    { "label": "unit tests (watch)", "type": "npm", "script": "test:watch", "isBackground": true, "problemMatcher": [] },
+    { "label": "start local Supabase", "type": "npm", "script": "db:start", "problemMatcher": [] }
+  ]
+}

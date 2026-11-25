@@ -1,0 +1,29 @@
+# dependencies and builds
+node_modules
+dist
+dist-ssr
+coverage
+*.local
+
+# test output
+playwright-report
+test-results
+
+# TanStack Router temp files (Phase I committed these by mistake)
+.tanstack
+
+# environment: never commit real keys
+.env
+.env.*
+!.env.example
+supabase/.temp
+supabase/.branches
+supabase/functions/.env
+
+# editor / OS
+.DS_Store
+Thumbs.db
+*.log
+logs
+.idea
+*.tsbuildinfo
